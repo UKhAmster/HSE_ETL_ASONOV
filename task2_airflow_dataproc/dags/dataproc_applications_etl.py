@@ -11,7 +11,6 @@ from airflow.providers.yandex.operators.dataproc import (
     DataprocCreatePysparkJobOperator,
     DataprocDeleteClusterOperator,
 )
-from airflow.utils.trigger_rule import TriggerRule
 
 FOLDER_ID = "b1g7b3ak2b38r1kktup8"
 SERVICE_ACCOUNT_ID = "aje511ve2gp8gm5kvdqd"
@@ -34,7 +33,7 @@ with DAG(
 ) as dag:
     create_cluster = DataprocCreateClusterOperator(
         task_id="create_dataproc_cluster",
-        cluster_name="airflow-dp-{{ ds_nodash }}",
+        cluster_name="airflow-dp-applications",
         folder_id=FOLDER_ID,
         zone=ZONE,
         subnet_id=SUBNET_ID,
@@ -69,7 +68,7 @@ with DAG(
 
     delete_cluster = DataprocDeleteClusterOperator(
         task_id="delete_dataproc_cluster",
-        trigger_rule=TriggerRule.ALL_DONE,
+        trigger_rule="all_done",  # удалить кластер даже если задание упало
         connection_id=YC_CONN_ID,
     )
 
