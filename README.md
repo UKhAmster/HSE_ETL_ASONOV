@@ -136,7 +136,31 @@ DataprocCreateClusterOperator   DataprocCreatePysparkJobOperator   DataprocDelet
 DAG снят с паузы и запущен через REST API (`scripts/airflow_api.sh`; авторизация двухслойная:
 `X-Cloud-Authorization: Bearer <IAM>` для прокси Yandex Cloud + JWT самого Airflow из `/auth/token`).
 
-_(результаты запуска заполняются ниже после завершения DAG)_
+Хронология успешного прогона `manual__2026-09-14T12:35:00` (время UTC):
+
+| Задача | Оператор | Старт | Финиш | Итог |
+|---|---|---|---|---|
+| `create_dataproc_cluster` | `DataprocCreateClusterOperator` | 12:35:20 | 12:38:17 | кластер `c9q1l32sgdb4642ut5bg` создан, id ушёл в XCom |
+| `run_process_applications` | `DataprocCreatePysparkJobOperator` | 12:38:18 | 12:39:47 | задание `c9qmonhtv5llvijlf8cu`, статус DONE |
+| `delete_dataproc_cluster` | `DataprocDeleteClusterOperator` | 12:39:48 | ~12:42 | кластер удалён, `yc dataproc cluster list` его не показывает |
+
+Итог DAG — `success`, весь цикл занял 7 минут. Результат в бакете `output/applications/2026-05/`
+(время объектов 12:39:23–12:39:42 совпадает с окном задания):
+
+```
+daily_by_product/               parquet 21 КБ   620 строк (день × продукт × решение)
+region_channel_conversion/      parquet  3 КБ    40 строк (регион × канал)
+risk_distribution/              parquet  2 КБ    15 строк
+csv/daily_by_product/, csv/region_channel_conversion/   копии для DataLens
+```
+
+Витрины `daily_by_product` и `region_channel_conversion` дополнительно загружены в YDB
+(`applications_daily`, `applications_region_channel`) для дашборда.
+
+Ещё одни грабли по дороге: провайдер ищет `cluster_id` через `xcom_pull(key="cluster_id")` без
+`task_ids`, а в Airflow 3 такой вызов читает XCom только своей задачи — обе следующие задачи падали с
+`Cluster id must be specified`, а кластер оставался жить. Решение: `cluster_id` передаётся явно
+шаблоном `{{ ti.xcom_pull(task_ids='create_dataproc_cluster', key='cluster_id') }}` (поле templated).
 
 ## Задание 3. Топики Apache Kafka и PySpark-задание в Data Processing
 
