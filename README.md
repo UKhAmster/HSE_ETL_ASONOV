@@ -4,6 +4,9 @@
 **Курс:** ETL-процессы, практическая работа «Реализация ETL-процесса»
 **Облако:** `cloud-blizzard-240`, каталог `default`, зона `ru-central1-a`
 
+PDF-версия отчёта: [`Отчёт_Асонов_ETL_модуль4.pdf`](Отчёт_Асонов_ETL_модуль4.pdf)
+(собирается из этого README скриптом `scripts/build_report_pdf.py`).
+
 Всё, кроме создания приёмника Object Storage в Data Transfer и дашборда DataLens, выполнено
 через `yc` CLI 1.34.0, `ydb` CLI 2.33.0 и REST API сервисов. Команды сохранены в
 [`scripts/infra_setup.sh`](scripts/infra_setup.sh), скриншоты консоли — в [`screenshots/`](screenshots/).
