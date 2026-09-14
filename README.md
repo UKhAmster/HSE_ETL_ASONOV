@@ -74,7 +74,8 @@ ydb -e $EP -d $DB import file csv --path transactions_v2 --header --newline-deli
 # 100% 2.12 MiB/s | 32.3 MiB / 32.3 MiB  Elapsed: 15s
 ```
 
-Проверка ([`02_check_data.sql`](task1_datatransfer/yql/02_check_data.sql)): `COUNT(*) = 322 110`;
+Проверка ([`02_check_data.sql`](task1_datatransfer/yql/02_check_data.sql)): `COUNT(*) = 322 110`
+(скриншот консоли: [`screenshots/task1_ydb_tables_and_count.png`](screenshots/task1_ydb_tables_and_count.png));
 средняя длительность отвеченного звонка ≈ 465 с, неотвеченного ≈ 20 с — данные согласованы с генератором.
 
 ### 1.3. Трансфер
@@ -144,7 +145,19 @@ DAG снят с паузы и запущен через REST API (`scripts/airfl
 | `run_process_applications` | `DataprocCreatePysparkJobOperator` | 12:38:18 | 12:39:47 | задание `c9qmonhtv5llvijlf8cu`, статус DONE |
 | `delete_dataproc_cluster` | `DataprocDeleteClusterOperator` | 12:39:48 | ~12:42 | кластер удалён, `yc dataproc cluster list` его не показывает |
 
-Итог DAG — `success`, весь цикл занял 7 минут. Результат в бакете `output/applications/2026-05/`
+Итог DAG — `success`, весь цикл занял 7 минут.
+
+Скриншоты Airflow и консоли:
+
+| Файл | Что видно |
+|---|---|
+| [`task2_airflow_cluster_overview.png`](screenshots/task2_airflow_cluster_overview.png) | кластер `etl-airflow`: Airflow 3.1, Python 3.12, SA `etl-sa`, 4 компонента по `c1-m4` |
+| [`task2_bucket_input.png`](screenshots/task2_bucket_input.png), [`task2_bucket_jobs.png`](screenshots/task2_bucket_jobs.png), [`task2_bucket_dags.png`](screenshots/task2_bucket_dags.png) | бакет: входной CSV, PySpark-задания, DAG-файл |
+| [`task2_airflow_dags_list.png`](screenshots/task2_airflow_dags_list.png) | список DAG, последний запуск `success` |
+| [`task2_airflow_dag_overview_runs.png`](screenshots/task2_airflow_dag_overview_runs.png) | три запуска: два отладочных `failed`, третий `success`, график длительности |
+| [`task2_airflow_run_success_tasks.png`](screenshots/task2_airflow_run_success_tasks.png) | успешный запуск: все три задачи `Success`, операторы и длительности |
+| [`task2_airflow_audit_log.png`](screenshots/task2_airflow_audit_log.png) | журнал: снятие с паузы и три ручных триггера через REST API |
+| [`task2_airflow_task_operator.png`](screenshots/task2_airflow_task_operator.png) | задача `run_process_applications`: `DataprocCreatePysparkJobOperator`, `all_success` | Результат в бакете `output/applications/2026-05/`
 (время объектов 12:39:23–12:39:42 совпадает с окном задания):
 
 ```
@@ -223,6 +236,18 @@ root
  |-- submitted_at: timestamp
 ```
 
+Скриншоты:
+
+| Файл | Что видно |
+|---|---|
+| [`task3_kafka_cluster_overview.png`](screenshots/task3_kafka_cluster_overview.png) | кластер `etl-kafka` 3.9.2, `s3-c2-m8`, 32 ГБ SSD, публичный доступ, SG `etl-sg` |
+| [`task3_kafka_topics.png`](screenshots/task3_kafka_topics.png) | топик `loan_applications`, 3 раздела, RF 1 |
+| [`task3_kafka_users.png`](screenshots/task3_kafka_users.png) | пользователь `etl_user` с ролями producer и consumer |
+| [`task3_dataproc_cluster_overview.png`](screenshots/task3_dataproc_cluster_overview.png) | кластер `etl-dp-kafka` 2.1, SPARK + YARN, SA `etl-sa`, бакет, UI Proxy |
+| [`task3_dataproc_job_done.png`](screenshots/task3_dataproc_job_done.png) | задание `kafka_flatten_loans` PYSPARK, статус Done, 15:19–15:21 |
+| [`task3_dataproc_logs_all.png`](screenshots/task3_dataproc_logs_all.png), [`task3_dataproc_logs_info.png`](screenshots/task3_dataproc_logs_info.png) | логи кластера |
+| [`task3_bucket_output_loans.png`](screenshots/task3_bucket_output_loans.png) | результат в бакете: `loan_applications_flat`, `loan_documents`, `csv/` |
+
 В бакете: `loan_applications_flat` parquet 1,66 МБ + CSV 9,7 МБ, `loan_documents` parquet 0,6 МБ,
 `csv/loan_summary`. Плоская таблица дополнительно загружена в YDB (`loan_applications_flat`, 61 728 строк)
 скриптом [`scripts/load_results_to_ydb.py`](scripts/load_results_to_ydb.py) для DataLens.
@@ -230,10 +255,30 @@ root
 ## Задание 4. Визуализация в DataLens
 
 Пошаговая инструкция и состав дашборда: [`task4_datalens/README.md`](task4_datalens/README.md).
-Источник — YDB `etl-db` (подключение через сервисный аккаунт `etl-sa`), четыре датасета,
-восемь чартов и три индикатора с селекторами по региону и типу кампании.
+Источник — YDB `etl-db`, подключение `ydb-etl-db` через сервисный аккаунт `etl-sa`, воркбук `HSE ETL`.
 
-Скриншоты: `screenshots/task4_*.png`.
+Датасеты (по одному на таблицу): `ds_calls` (transactions_v2), `ds_loans` (loan_applications_flat),
+`ds_region_channel` (applications_region_channel), `ds_daily` (applications_daily).
+Вычисляемые поля построены на флагах `IF(..., 1, 0)` с агрегацией в чарте: `COUNTIF` для
+YDB-источника DataLens не поддерживает.
+
+Чарты (Wizard) и что на них видно:
+
+| Файл | Чарт | Датасет | Наблюдение |
+|---|---|---|---|
+| [`task4_indicator_calls_total.png`](screenshots/task4_indicator_calls_total.png) | Звонков всего | `ds_calls` | 322 110 — совпадает с `COUNT(*)` в YDB |
+| [`task4_indicator_kafka_applications.png`](screenshots/task4_indicator_kafka_applications.png) | Заявок из Kafka | `ds_loans` | 61 728 — совпадает с числом сообщений продюсера |
+| [`task4_indicator_approved_total.png`](screenshots/task4_indicator_approved_total.png) | Одобрено, сумма | `ds_daily` | 7 720 345 000 |
+| [`task4_chart_calls_by_campaign.png`](screenshots/task4_chart_calls_by_campaign.png) | Звонки по кампаниям и статусам | `ds_calls` | ~64 тыс. звонков на кампанию, статусы распределены равномерно |
+| [`task4_chart_answer_rate_by_region.png`](screenshots/task4_chart_answer_rate_by_region.png) | Доля дозвонов по регионам | `ds_calls` | ~0,20 во всех регионах, лидер DE-NW |
+| [`task4_chart_duration_by_day.png`](screenshots/task4_chart_duration_by_day.png) | Длительность разговора по дням | `ds_calls` | фильтр `call_status = answered`, средняя ~465 с |
+| [`task4_chart_risk_x_decision_pivot.png`](screenshots/task4_chart_risk_x_decision_pivot.png) | Риск × решение (сводная с раскраской) | `ds_loans` | high/approved 17 216, цифры совпадают с YQL-проверкой |
+| [`task4_chart_loan_amount_by_day.png`](screenshots/task4_chart_loan_amount_by_day.png) | Сумма кредитов по дням и риску | `ds_loans` | стек high/low/medium по дням мая |
+| [`task4_chart_region_channel_table.png`](screenshots/task4_chart_region_channel_table.png) | Одобрение по регионам и каналам | `ds_region_channel` | approval_rate 0,54–0,56, ~11,4 тыс. заявок на пару |
+| [`task4_chart_applications_by_product.png`](screenshots/task4_chart_applications_by_product.png) | Заявки по продуктам (Airflow-витрина) | `ds_daily` | ~14,7 тыс. заявок в день, 5 продуктов поровну |
+
+Дашборд `HSE ETL — кредитная аналитика`: селекторы `Кампания` (ds_calls → 4 виджета) и `Регион`
+(ds_loans → 3 виджета), три секции с заголовками. Скриншоты дашборда: `screenshots/task4_dashboard_*.png`.
 
 ## Уборка ресурсов и стоимость
 
