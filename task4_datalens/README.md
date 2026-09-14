@@ -19,10 +19,17 @@ YQL создания витрин: [`yql/03_result_tables.sql`](yql/03_result_ta
    Тип «Managed Service for YDB», облако `cloud-blizzard-240`, каталог `default`, база `etl-db`,
    аутентификация — «Сервисный аккаунт» `etl-sa` (у него роль `ydb.editor`). Имя `ydb-etl-db`. Проверить подключение, сохранить.
 3. **Датасеты** (по одному на таблицу): «Создать датасет» → выбрать подключение → перетащить таблицу.
-   - `ds_calls` ← `transactions_v2`. Добавить вычисляемые поля:
-     `answered = COUNTIF([call_status] = "answered")`, `answer_rate = [answered] / COUNT()`,
-     `interested = COUNTIF([client_response] = "interested")`.
-   - `ds_loans` ← `loan_applications_flat`. Поле `approved_share = COUNTIF([decision_status] = "approved") / COUNT()`.
+   - `ds_calls` ← `transactions_v2`. Добавить вычисляемые поля («Добавить поле» → «Формула»;
+     имя поля вводится в заголовке окна, в редактор вставляется **только выражение**):
+
+     | Имя поля | Формула |
+     |---|---|
+     | `answered` | `COUNTIF([call_status] = "answered")` |
+     | `answer_rate` | `[answered] / COUNT()` |
+     | `interested` | `COUNTIF([client_response] = "interested")` |
+
+   - `ds_loans` ← `loan_applications_flat`. Поле `approved_share` с формулой
+     `COUNTIF([decision_status] = "approved") / COUNT()`.
    - `ds_region_channel` ← `applications_region_channel`.
    - `ds_daily` ← `applications_daily`.
 4. **Чарты** («Создать» → «Чарт», датасет из списка):
