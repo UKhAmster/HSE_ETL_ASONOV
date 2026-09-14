@@ -84,14 +84,37 @@ ydb -e $EP -d $DB import file csv --path transactions_v2 --header --newline-deli
   `POST https://datatransfer.api.cloud.yandex.net/v1/endpoint` с `settings.ydbSource`
   (`database`, `instance = ydb.serverless.yandexcloud.net:2135`, `paths = ["transactions_v2"]`,
   аутентификация сервисным аккаунтом `etl-sa`). CLI `yc datatransfer endpoint create` не поддерживает
-  тип YDB, публичный API не поддерживает приёмник Object Storage.
-- **Приёмник** `s3-transactions-target`: тип Object Storage, бакет `hse-etl-asonov-2026`,
-  формат CSV, префикс `transfer/transactions_v2`, сервисный аккаунт `etl-sa` — создан в консоли.
-- **Трансфер** `ydb-to-s3-transactions`, тип «Копирование» (snapshot), активирован из консоли.
+  тип YDB, а публичный API не поддерживает приёмник Object Storage, поэтому приёмник создан в консоли.
+- **Приёмник** `s3-transactions-target` (`dtetbhol3fmloehgrm0e`): тип Object Storage, бакет `hse-etl-asonov-2026`,
+  формат CSV, путь `transfer/transactions_v2`, сервисный аккаунт `etl-sa`.
+- **Трансфер** `ydb-to-s3-transactions` (`dttutjs3u94sna1f30lm`), тип «Копирование» (`SNAPSHOT_ONLY`),
+  создан 14.09.2026 в 17:32, активирован из консоли.
 
 ### 1.4. Проверка работоспособности
 
-_(результат заполняется после активации трансфера, см. скриншоты `screenshots/task1_*.png`)_
+Статус трансфера — **Завершён** (`yc datatransfer transfer get … → DONE`). В бакете появился объект
+
+```
+transfer/transactions_v2/transactions_v2/part-1789396328-c21f969b.00000.csv   36 453 392 байт (34,8 МБ)
+```
+
+Контроль полноты: в файле **322 110 строк**, столько же, сколько `COUNT(*)` в YDB. Первые строки:
+
+```
+call_20260501_0000027,2026-05-01 22:41:31 +0000 UTC,client_41306,DE-NW,credit_card_offer,answered,callback_later,881,true
+call_20260501_0000105,2026-05-01 22:34:59 +0000 UTC,client_46870,DE-NW,credit_card_offer,declined,unknown,3,false
+```
+
+Data Transfer выгружает `Datetime` в формате `2026-05-01 22:41:31 +0000 UTC`, а `Bool` — как `true/false`.
+
+Скриншоты:
+
+| Файл | Что видно |
+|---|---|
+| [`task1_ydb_tables_and_count.png`](screenshots/task1_ydb_tables_and_count.png) | YDB `etl-db`: таблицы и `SELECT COUNT(*) FROM transactions_v2` = 322 110 |
+| [`task1_dt_endpoints.png`](screenshots/task1_dt_endpoints.png) | эндпоинты: источник YDB и приёмник Object Storage |
+| [`task1_dt_transfer_done.png`](screenshots/task1_dt_transfer_done.png) | трансфер `ydb-to-s3-transactions`, тип «Копировать», статус «Завершён» |
+| [`task1_bucket_transfer.png`](screenshots/task1_bucket_transfer.png) | папка `transfer/transactions_v2` в бакете |
 
 ## Задание 2. Автоматизация Yandex Data Processing через Managed Airflow
 
@@ -277,14 +300,23 @@ YDB-источника DataLens не поддерживает.
 | [`task4_chart_region_channel_table.png`](screenshots/task4_chart_region_channel_table.png) | Одобрение по регионам и каналам | `ds_region_channel` | approval_rate 0,54–0,56, ~11,4 тыс. заявок на пару |
 | [`task4_chart_applications_by_product.png`](screenshots/task4_chart_applications_by_product.png) | Заявки по продуктам (Airflow-витрина) | `ds_daily` | ~14,7 тыс. заявок в день, 5 продуктов поровну |
 
+Объекты воркбука `HSE ETL`: [`task4_datalens_connection.png`](screenshots/task4_datalens_connection.png)
+(подключение `ydb-etl-db`), [`task4_datalens_datasets.png`](screenshots/task4_datalens_datasets.png)
+(4 датасета), [`task4_datalens_charts.png`](screenshots/task4_datalens_charts.png) (10 чартов).
+
 Дашборд `HSE ETL — кредитная аналитика`: селекторы `Кампания` (ds_calls → 4 виджета) и `Регион`
-(ds_loans → 3 виджета), три секции с заголовками. Скриншоты дашборда: `screenshots/task4_dashboard_*.png`.
+(ds_loans → 3 виджета), три секции с заголовками.
+
+| Файл | Что видно |
+|---|---|
+| [`task4_dashboard_full.png`](screenshots/task4_dashboard_full.png) | дашборд без фильтров: 322 110 звонков, 61 728 заявок, 7,72 млрд одобрено |
+| [`task4_dashboard_filtered.png`](screenshots/task4_dashboard_filtered.png) | выбраны кампания `cash_loan_offer` и регион `DE-BE`: индикаторы пересчитались (64 234 звонка, 7 608 заявок), витрины Airflow не зависят от селекторов |
 
 ## Уборка ресурсов и стоимость
 
-После снятия скриншотов удалены: `etl-airflow`, `etl-kafka`, `etl-dp-kafka`, кластер `airflow-dp-applications`
-(его удаляет сам DAG), NAT-шлюз. Оставлены YDB serverless (оплата по запросам, в бесплатном пакете)
-и бакет (~65 МБ, в бесплатном 1 ГБ).
+После снятия скриншотов удалены: `etl-airflow`, `etl-kafka`, `etl-dp-kafka`, трансфер и эндпоинты Data Transfer,
+NAT-шлюз. Кластер `airflow-dp-applications` удалил сам DAG. Оставлены YDB serverless (оплата по запросам,
+в бесплатном пакете) и бакет (~68 МБ, в бесплатном 1 ГБ) — на них построен дашборд DataLens.
 
 Ориентировочная стоимость прогона: Airflow ~27 ₽/ч × 3 ч, Kafka ~6 ₽/ч × 3 ч, Data Proc ~15 ₽/ч × 2 ч,
 итого около 130 ₽ из стартового гранта 4000 ₽.
