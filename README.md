@@ -18,7 +18,6 @@ PDF-версия отчёта: [`Отчёт_Асонов_ETL_модуль4.pdf`]
 3. [Задание 2. Airflow + Data Processing](#задание-2-автоматизация-yandex-data-processing-через-managed-airflow)
 4. [Задание 3. Kafka + PySpark](#задание-3-топики-apache-kafka-и-pyspark-задание-в-data-processing)
 5. [Задание 4. DataLens](#задание-4-визуализация-в-datalens)
-6. [Уборка ресурсов и стоимость](#уборка-ресурсов-и-стоимость)
 
 Структура репозитория:
 
@@ -314,12 +313,3 @@ YDB-источника DataLens не поддерживает.
 |---|---|
 | [`task4_dashboard_full.png`](screenshots/task4_dashboard_full.png) | дашборд без фильтров: 322 110 звонков, 61 728 заявок, 7,72 млрд одобрено |
 | [`task4_dashboard_filtered.png`](screenshots/task4_dashboard_filtered.png) | выбраны кампания `cash_loan_offer` и регион `DE-BE`: индикаторы пересчитались (64 234 звонка, 7 608 заявок), витрины Airflow не зависят от селекторов |
-
-## Уборка ресурсов и стоимость
-
-После снятия скриншотов удалены: `etl-airflow`, `etl-kafka`, `etl-dp-kafka`, трансфер и эндпоинты Data Transfer,
-NAT-шлюз. Кластер `airflow-dp-applications` удалил сам DAG. Оставлены YDB serverless (оплата по запросам,
-в бесплатном пакете) и бакет (~68 МБ, в бесплатном 1 ГБ) — на них построен дашборд DataLens.
-
-Ориентировочная стоимость прогона: Airflow ~27 ₽/ч × 3 ч, Kafka ~6 ₽/ч × 3 ч, Data Proc ~15 ₽/ч × 2 ч,
-итого около 130 ₽ из стартового гранта 4000 ₽.
