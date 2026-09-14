@@ -21,6 +21,9 @@ BUCKET = "hse-etl-asonov-2026"
 # Авторизация в Yandex Cloud идёт через сервисный аккаунт кластера Airflow (etl-sa),
 # поэтому отдельное подключение с ключом не нужно: используется yandexcloud_default.
 YC_CONN_ID = "yandexcloud_default"
+# В Airflow 3 xcom_pull(key=...) без task_ids читает XCom только своей задачи, поэтому
+# cluster_id из задачи создания кластера передаём явно через шаблон (поле templated).
+CLUSTER_ID_XCOM = "{{ ti.xcom_pull(task_ids='create_dataproc_cluster', key='cluster_id') }}"
 SSH_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFmSLZQeEUsawswbPFMNmp3frzIin+Yvu4SVIlQl0Z2P"
 
 with DAG(
@@ -58,6 +61,7 @@ with DAG(
     run_pyspark = DataprocCreatePysparkJobOperator(
         task_id="run_process_applications",
         name="process_applications",
+        cluster_id=CLUSTER_ID_XCOM,
         main_python_file_uri=f"s3a://{BUCKET}/jobs/process_applications.py",
         args=[
             f"s3a://{BUCKET}/input/applications/2026-05/",
@@ -68,6 +72,7 @@ with DAG(
 
     delete_cluster = DataprocDeleteClusterOperator(
         task_id="delete_dataproc_cluster",
+        cluster_id=CLUSTER_ID_XCOM,
         trigger_rule="all_done",  # удалить кластер даже если задание упало
         connection_id=YC_CONN_ID,
     )
