@@ -32,17 +32,25 @@ YQL создания витрин: [`yql/03_result_tables.sql`](yql/03_result_ta
      `COUNTIF([decision_status] = "approved") / COUNT()`.
    - `ds_region_channel` ← `applications_region_channel`.
    - `ds_daily` ← `applications_daily`.
-4. **Чарты** («Создать» → «Чарт», датасет из списка):
-   - «Звонки по кампаниям и статусам» — столбчатая: X `campaign_type`, Y `COUNT()`, цвет `call_status`.
-   - «Доля дозвонов по регионам» — линейчатая: Y `region_code`, X `answer_rate`.
-   - «Длительность разговора по дням» — линейная: X `call_time` (день), Y `AVG([duration_sec])`, фильтр `call_status = answered`.
-   - «Заявки из Kafka: риск × решение» — тепловая карта: строки `risk_level`, столбцы `decision_status`, значение `COUNT()`.
-   - «Сумма кредитов по дням и уровню риска» — область: X `submitted_date`, Y `SUM([loan_amount])`, цвет `risk_level`.
-   - «Одобрение по регионам и каналам» — таблица из `ds_region_channel`: `region_code`, `channel`, `applications`, `approval_rate`.
-   - «Заявки по продуктам (Airflow-витрина)» — столбчатая из `ds_daily`: X `event_date`, Y `SUM([applications])`, цвет `product_type`.
-   - Индикаторы: `COUNT()` звонков, `COUNT()` заявок Kafka, `SUM([approved_total])` из `ds_daily`.
+4. **Чарты** («Создать» → «Чарт» → **Wizard**, выбрать датасет из таблицы). `COUNT()` в Wizard
+   получается перетаскиванием строкового поля в секцию и выбором агрегации «Количество».
+
+   | # | Чарт | Датасет | Тип | Секции |
+   |---|---|---|---|---|
+   | 1 | Звонки по кампаниям и статусам | `ds_calls` | Столбчатая | X `campaign_type`, Y `call_id` (Количество), Цвета `call_status` |
+   | 2 | Доля дозвонов по регионам | `ds_calls` | Линейчатая | Y `region_code`, X `answer_rate` |
+   | 3 | Длительность разговора по дням | `ds_calls` | Линейная | X `call_time` (День), Y `duration_sec` (Среднее), Фильтры `call_status` = answered |
+   | 4 | Заявки из Kafka: риск × решение | `ds_loans` | Тепловая карта | X `decision_status`, Y `risk_level`, Цвета `application_id` (Количество) |
+   | 5 | Сумма кредитов по дням и риску | `ds_loans` | С областями | X `submitted_at` (День), Y `loan_amount` (Сумма), Цвета `risk_level` |
+   | 6 | Одобрение по регионам и каналам | `ds_region_channel` | Таблица | Столбцы `region_code`, `channel`, `applications`, `approval_rate` |
+   | 7 | Заявки по продуктам (Airflow-витрина) | `ds_daily` | Столбчатая | X `event_date` (День), Y `applications` (Сумма), Цвета `product_type` |
+   | 8 | Индикатор «Звонков всего» | `ds_calls` | Индикатор | Показатель `call_id` (Количество) |
+   | 9 | Индикатор «Заявок из Kafka» | `ds_loans` | Индикатор | Показатель `application_id` (Количество) |
+   | 10 | Индикатор «Одобрено, сумма» | `ds_daily` | Индикатор | Показатель `approved_total` (Сумма) |
+
 5. **Дашборд**: «Создать» → «Дашборд» `HSE ETL — кредитная аналитика`. Добавить чарты, сверху селекторы
-   `region_code` (из `ds_loans`) и `campaign_type` (из `ds_calls`) со связями на чарты. Сохранить, при желании «Опубликовать».
+   `region_code` (из `ds_loans`, связать с чартами 4, 5, 9) и `campaign_type` (из `ds_calls`, связать с чартами 1, 2, 3, 8).
+   Селектор действует только на чарты своего датасета. Сохранить, при желании «Опубликовать».
 
 ## Что приложить в отчёт
 - скриншот подключения `ydb-etl-db` с успешной проверкой;
