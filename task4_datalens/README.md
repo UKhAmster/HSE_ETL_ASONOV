@@ -42,7 +42,7 @@ YQL создания витрин: [`yql/03_result_tables.sql`](yql/03_result_ta
    | 1 | Звонки по кампаниям и статусам | `ds_calls` | Столбчатая | X `campaign_type`, Y `call_id` (Количество), Цвета `call_status` |
    | 2 | Доля дозвонов по регионам | `ds_calls` | Линейчатая | Y `region_code`, X `is_answered` (агрегация «Среднее») |
    | 3 | Длительность разговора по дням | `ds_calls` | Линейная | X `call_time` (День), Y `duration_sec` (Среднее), Фильтры `call_status` = answered |
-   | 4 | Заявки из Kafka: риск × решение | `ds_loans` | Тепловая карта | X `decision_status`, Y `risk_level`, Цвета `application_id` (Количество) |
+   | 4 | Заявки из Kafka: риск × решение | `ds_loans` | Сводная таблица | Строки `risk_level`, Столбцы `decision_status`, Показатели и Цвета `application_id` (Количество) — раскраска ячеек даёт тепловую карту |
    | 5 | Сумма кредитов по дням и риску | `ds_loans` | С областями | X `submitted_at` (День), Y `loan_amount` (Сумма), Цвета `risk_level` |
    | 6 | Одобрение по регионам и каналам | `ds_region_channel` | Таблица | Столбцы `region_code`, `channel`, `applications`, `approval_rate` |
    | 7 | Заявки по продуктам (Airflow-витрина) | `ds_daily` | Столбчатая | X `event_date` (День), Y `applications` (Сумма), Цвета `product_type` |
