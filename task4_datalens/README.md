@@ -20,16 +20,18 @@ YQL создания витрин: [`yql/03_result_tables.sql`](yql/03_result_ta
    аутентификация — «Сервисный аккаунт» `etl-sa` (у него роль `ydb.editor`). Имя `ydb-etl-db`. Проверить подключение, сохранить.
 3. **Датасеты** (по одному на таблицу): «Создать датасет» → выбрать подключение → перетащить таблицу.
    - `ds_calls` ← `transactions_v2`. Добавить вычисляемые поля («Добавить поле» → «Формула»;
-     имя поля вводится в заголовке окна, в редактор вставляется **только выражение**):
+     имя поля вводится в заголовке окна, в редактор **набирается только выражение**, без обратных
+     кавычек — при вставке из Markdown они ломают формулу). `COUNTIF` для YDB-источника
+     не поддерживается, поэтому используются флаги 0/1 с агрегацией в чарте:
 
-     | Имя поля | Формула |
-     |---|---|
-     | `answered` | `COUNTIF([call_status] = "answered")` |
-     | `answer_rate` | `[answered] / COUNT()` |
-     | `interested` | `COUNTIF([client_response] = "interested")` |
+     | Имя поля | Формула | Тип |
+     |---|---|---|
+     | `is_answered` | `IF([call_status] = "answered", 1, 0)` | Целое число |
+     | `interested` | `IF([client_response] = "interested", 1, 0)` | Целое число |
+     | `answer_rate` | `AVG([is_answered])` | Дробное число (попадает в «Показатели») |
 
-   - `ds_loans` ← `loan_applications_flat`. Поле `approved_share` с формулой
-     `COUNTIF([decision_status] = "approved") / COUNT()`.
+   - `ds_loans` ← `loan_applications_flat`. Поле `is_approved` с формулой
+     `IF([decision_status] = "approved", 1, 0)`; доля одобрений в чартах — это `is_approved` с агрегацией «Среднее».
    - `ds_region_channel` ← `applications_region_channel`.
    - `ds_daily` ← `applications_daily`.
 4. **Чарты** («Создать» → «Чарт» → **Wizard**, выбрать датасет из таблицы). `COUNT()` в Wizard
@@ -38,7 +40,7 @@ YQL создания витрин: [`yql/03_result_tables.sql`](yql/03_result_ta
    | # | Чарт | Датасет | Тип | Секции |
    |---|---|---|---|---|
    | 1 | Звонки по кампаниям и статусам | `ds_calls` | Столбчатая | X `campaign_type`, Y `call_id` (Количество), Цвета `call_status` |
-   | 2 | Доля дозвонов по регионам | `ds_calls` | Линейчатая | Y `region_code`, X `answer_rate` |
+   | 2 | Доля дозвонов по регионам | `ds_calls` | Линейчатая | Y `region_code`, X `is_answered` (агрегация «Среднее») |
    | 3 | Длительность разговора по дням | `ds_calls` | Линейная | X `call_time` (День), Y `duration_sec` (Среднее), Фильтры `call_status` = answered |
    | 4 | Заявки из Kafka: риск × решение | `ds_loans` | Тепловая карта | X `decision_status`, Y `risk_level`, Цвета `application_id` (Количество) |
    | 5 | Сумма кредитов по дням и риску | `ds_loans` | С областями | X `submitted_at` (День), Y `loan_amount` (Сумма), Цвета `risk_level` |
